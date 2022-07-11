@@ -1,18 +1,18 @@
 {
-    "id": "yourName_uniqueid",
-    "name": "starsector-gradle-template",
-    "author": "Your Name",
-    "utility": "false",
-    "version": { "major":"1", "minor": "0", "patch": "0" },
-    "description": "Mod description.",
+    "id": "location-location-location",
+    "name": "Location Location Location",
+    "author": "lizelive",
+    "utility": "true",
+    "version": "0.0.1",
+    "description": "Enables the player to search for systems with a certain number of planets and conditions.",
     "gameVersion": "0.95.1a-RC6",
-    "jars":["jars/starsector-gradle-template.jar"],
-    "modPlugin":"com.example.ExampleModPlugin",
-    "dependencies": [
+    "jars":["jars/starbase-location.jar"],
+    "dependencies":  [
+        {"id": "lw_console", "name": "Console Commands"},
         {
             "id": "lw_lazylib",
-            "name": "LazyLib",
-            # "version": "2.6" # If a specific version or higher is required, include this line
-        }
-    ]
+            "name": "LazyLib"
+         }
+    ],
+    "modPlugin": "live.lize.LocationPlugin"
 }

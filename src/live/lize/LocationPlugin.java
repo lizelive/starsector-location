@@ -1,10 +1,10 @@
-package com.example;
+package live.lize;
 
 import com.fs.starfarer.api.BaseModPlugin;
 import com.fs.starfarer.api.Global;
 import com.thoughtworks.xstream.XStream;
 
-public class ExampleModPlugin extends BaseModPlugin {
+public class LocationPlugin extends BaseModPlugin {
 
     @Override
     public void onGameLoad(boolean newGame) {

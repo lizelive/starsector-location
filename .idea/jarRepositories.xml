@@ -26,5 +26,10 @@
       <option name="name" value="MavenRepo" />
       <option name="url" value="https://repo.maven.apache.org/maven2/" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="maven" />
+      <option name="name" value="maven" />
+      <option name="url" value="file:/$PROJECT_DIR$/../../../../../Program%20Files%20(x86)/Fractal%20Softworks/Starsector/mods/starbase-location/libs/" />
+    </remote-repository>
   </component>
 </project>

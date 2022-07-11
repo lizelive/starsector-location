@@ -1,4 +1,4 @@
-package com.example;
+package live.lize;
 
 import com.fs.starfarer.api.EveryFrameScript;
 
