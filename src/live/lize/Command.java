@@ -3,14 +3,20 @@ package live.lize;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.*;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.campaign.econ.SubmarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Conditions;
+import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.ids.Tags;
+import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
+import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
 import org.jetbrains.annotations.NotNull;
 import org.lazywizard.console.BaseCommand;
 import org.lazywizard.console.Console;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import com.fs.starfarer.api.campaign.econ.MarketAPI;
 
 enum Industry {
     PopulationAndInfrastructure,
@@ -27,7 +33,29 @@ enum Industry {
     HighCommand
 }
 
-class ProductionPotential {
+class ProductionPotential  implements  Cloneable{
+    @Override
+    public String toString() {
+        return "ProductionPotential{" +
+                "rare_ore=" + rare_ore +
+                ", ore=" + ore +
+                ", organics=" + organics +
+                ", food=" + food +
+                ", volatiles=" + volatiles +
+                ", metal=" + metal +
+                ", transplutonics=" + transplutonics +
+                ", fuel=" + fuel +
+                ", supplies=" + supplies +
+                ", heavy_machinery=" + heavy_machinery +
+                ", heavy_armaments=" + heavy_armaments +
+                ", ship_hulls=" + ship_hulls +
+                ", domestic_goods=" + domestic_goods +
+                ", luxury_goods=" + luxury_goods +
+                ", recreational_drugs=" + recreational_drugs +
+                ", harvested_organs=" + harvested_organs +
+                '}';
+    }
+
     private static final int MAX_COLONY_SIZE = 6;
     private static final ProductionPotential ZERO = new ProductionPotential();
 
@@ -51,27 +79,11 @@ class ProductionPotential {
 
 
     // zero produciton
-    public ProductionPotential(){
+    public ProductionPotential() {
 
     }
 
-    public ProductionPotential(boolean use_ai){
-
-        int base = MAX_COLONY_SIZE - (use_ai ? 1 : 0);
-
-        // Population & Infrastructure
-        food = base - 1;
-        domestic_goods = base - 1;
-        luxury_goods = base - 3;
-        recreational_drugs = base - 2;
-        harvested_organs = base - 3;
-        supplies = 2;
-        organics = base - 1;
-
-        clip();
-    }
-
-    public static ProductionPotential  max(ProductionPotential a, ProductionPotential b){
+    public static ProductionPotential max(ProductionPotential a, ProductionPotential b) {
         ProductionPotential out = new ProductionPotential();
         out.rare_ore = Math.max(a.rare_ore, b.rare_ore);
         out.ore = Math.max(a.ore, b.ore);
@@ -92,7 +104,7 @@ class ProductionPotential {
         return out;
     }
 
-    public void subtract(ProductionPotential other){
+    public void subtract(ProductionPotential other) {
         rare_ore = rare_ore - other.rare_ore;
         ore = ore - other.ore;
         organics = organics - other.organics;
@@ -111,7 +123,7 @@ class ProductionPotential {
         harvested_organs = harvested_organs - other.harvested_organs;
     }
 
-    public void min(ProductionPotential other){
+    public void min(ProductionPotential other) {
         rare_ore = Math.min(rare_ore, other.rare_ore);
         ore = Math.min(ore, other.ore);
         organics = Math.min(organics, other.organics);
@@ -130,7 +142,26 @@ class ProductionPotential {
         harvested_organs = Math.min(harvested_organs, other.harvested_organs);
     }
 
-    public void max(ProductionPotential other){
+    public int total() {
+        return rare_ore +
+                ore +
+                organics +
+                food +
+                volatiles +
+                metal +
+                transplutonics +
+                fuel +
+                supplies +
+                heavy_machinery +
+                heavy_armaments +
+                ship_hulls +
+                domestic_goods +
+                luxury_goods +
+                recreational_drugs +
+                harvested_organs;
+    }
+
+    public void max(ProductionPotential other) {
         rare_ore = Math.max(rare_ore, other.rare_ore);
         ore = Math.max(ore, other.ore);
         organics = Math.max(organics, other.organics);
@@ -149,14 +180,14 @@ class ProductionPotential {
         harvested_organs = Math.max(harvested_organs, other.harvested_organs);
     }
 
-    public void clip(){
+    public void clip() {
         max(ZERO);
     }
 
     // get demand
-    public static ProductionPotential demand(Industry industry, boolean use_ai){
+    public static ProductionPotential demand(Industry industry, boolean use_ai) {
         int size = MAX_COLONY_SIZE;
-        int modifier = use_ai? -1 : 0;
+        int modifier = use_ai ? -1 : 0;
         int base = size + modifier;
         ProductionPotential demand = new ProductionPotential();
 
@@ -180,7 +211,7 @@ class ProductionPotential {
 
         // NOT_A_GAS_GIANT, NOT_EXTREME_WEATHER, NOT_EXTREME_TECTONIC_ACTIVITY
 
-        if (industry == null){
+        if (industry == null) {
             // fuel refining
             demand.volatiles = base;
 
@@ -244,7 +275,7 @@ class ProductionPotential {
 
     }
 
-    public boolean at_least(ProductionPotential other){
+    public boolean at_least(ProductionPotential other) {
         return rare_ore >= other.rare_ore
                 && ore >= other.ore
                 && organics >= other.organics
@@ -263,49 +294,58 @@ class ProductionPotential {
                 && harvested_organs >= other.harvested_organs;
     }
 
-    public ProductionPotential(PlanetReport planet){
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+    public ProductionPotential(PlanetInfo planet) {
         int size = MAX_COLONY_SIZE;
 
         // using max ai cores and improvement
-        int admin_modifier = 3;
+        // jk just admin mod
+        int admin_modifier = 1;
 
         int base = size + admin_modifier;
 
-        if(planet.rare_ore > 0){
-            rare_ore = base + (planet.rare_ore -1) - 2;
+        if (planet.rare_ore > 0) {
+            rare_ore = base + (planet.rare_ore - 1) - 2;
             // Autonomous Mantle Bore
-            if(!planet.habitable)
+            if (!planet.habitable)
                 rare_ore += 3;
         }
 
-        if(planet.ore > 0){
-            ore = base + (planet.ore -1);
+        if (planet.ore > 0) {
+            ore = base + (planet.ore - 1);
             // Autonomous Mantle Bore
-            if(!planet.habitable)
+            if (!planet.habitable)
                 ore += 3;
         }
 
-        if(planet.organics > 0) {
+        if (planet.organics > 0) {
             organics = base + (planet.organics - 1);
 
-            if(!planet.habitable)
+            if (!planet.habitable)
                 organics += 3;
         }
 
-        if(planet.volatiles > 0) {
+        if (planet.volatiles > 0) {
             volatiles = base + (planet.volatiles - 1) - 2;
             // Plasma Dynamo
-            if(planet.gas_giant)
+            if (planet.gas_giant)
                 volatiles += 3;
         }
 
-        if(planet.food > 0){
-            food = base + (planet.food -1);
+        if (planet.food > 0) {
+            food = base + (planet.food - 1);
 
             // Soil Nanites
-            if(planet.rare_ore == 0 && planet.volatiles == 0)
+            if (planet.rare_ore == 0 && planet.volatiles == 0)
                 food += 2;
         }
+
+        // civ
+        harvested_organs = base - 5;
 
         // refinery
         transplutonics = base - 2;
@@ -315,24 +355,24 @@ class ProductionPotential {
         fuel = base - 2;
 
         // Catalytic Core
-        if (planet.atmosphere == 0){
+        if (planet.atmosphere == 0) {
             transplutonics += 3;
             metal += 3;
         }
 
         // Synchrotron Core
-        if (planet.atmosphere == 0){
+        if (planet.atmosphere == 0) {
             fuel += 3;
         }
 
         // orbital works
-        heavy_machinery = size -2 + admin_modifier;
-        supplies = size - 2 + admin_modifier;
-        heavy_armaments = size - 2 + admin_modifier;
-        ship_hulls = size - 2 + admin_modifier;
+        heavy_machinery = base - 2 ;
+        supplies = base - 2;
+        heavy_armaments = base - 2;
+        ship_hulls = base - 2;
 
         // todo nanoforge should not be installed in habitable but it can be
-        if (!planet.habitable){
+        if (!planet.habitable) {
             heavy_machinery += 3;
             supplies += 3;
             heavy_armaments += 3;
@@ -340,20 +380,30 @@ class ProductionPotential {
         }
 
         // light industry
-        recreational_drugs = size -2 + admin_modifier;
-        luxury_goods = size;
+        recreational_drugs = base - 2;
+        luxury_goods = base - 2;
+        domestic_goods = base;
 
-        if(planet.habitable){
+        if (planet.habitable) {
             luxury_goods += 2;
             domestic_goods += 2;
             recreational_drugs += 2;
         }
+
+        if(planet.cryosanctum){
+            harvested_organs = base + 3;
+        }
+
+
+        clip();
     }
 }
 
-class PlanetReport {
+class PlanetInfo {
+
     public float hazard;
-    public  float accessibility;
+    public float accessibility;
+
     // 0 is normal +2 is very hot
     public int heat;
 
@@ -364,135 +414,227 @@ class PlanetReport {
     public int food;
     public int volatiles;
 
+    public int ruins;
+
     boolean solar_array;
+
+    boolean cryosanctum;
+
     int atmosphere;
     boolean habitable;
 
     boolean gas_giant;
+    String name;
 
-    public PlanetReport(PlanetAPI planet){
+    @Override
+    public String toString() {
+        return "PlanetInfo{" +
+                "hazard=" + hazard +
+                ", accessibility=" + accessibility +
+                ", heat=" + heat +
+                ", rare_ore=" + rare_ore +
+                ", ore=" + ore +
+                ", organics=" + organics +
+                ", food=" + food +
+                ", volatiles=" + volatiles +
+                ", solar_array=" + solar_array +
+                ", cryosanctum=" + cryosanctum +
+                ", atmosphere=" + atmosphere +
+                ", habitable=" + habitable +
+                ", gas_giant=" + gas_giant +
+                ", name='" + name + '\'' +
+                '}';
+    }
+
+    public PlanetInfo(PlanetAPI planet) {
+        name = planet.getName();
         solar_array = planet.hasCondition(Conditions.SOLAR_ARRAY);
 
         atmosphere = 2;
         if (planet.hasCondition(Conditions.NO_ATMOSPHERE))
             atmosphere = 0;
 
-        if(planet.hasCondition(Conditions.THIN_ATMOSPHERE))
+        if (planet.hasCondition(Conditions.THIN_ATMOSPHERE))
             atmosphere = 1;
 
-        if(planet.hasCondition(Conditions.DENSE_ATMOSPHERE))
+        if (planet.hasCondition(Conditions.DENSE_ATMOSPHERE))
             atmosphere = 3;
 
         habitable = planet.hasCondition(Conditions.HABITABLE);
-
-        gas_giant = planet.hasTag(Tags.GAS_GIANT);
-
+        gas_giant = planet.isGasGiant();
         MarketAPI market = planet.getMarket();
-        hazard = market.getHazardValue();
-        accessibility = market.getAccessibilityMod().flatBonus;
-
-        if ( planet.hasCondition(Conditions.FARMLAND_POOR)){
+            if(market != null ) {
+            hazard = market.getHazardValue();
+            accessibility = market.getAccessibilityMod().flatBonus;
+            cryosanctum = market.hasIndustry(Industries.CRYOSANCTUM);
+        }
+        if (planet.hasCondition(Conditions.FARMLAND_POOR)) {
             food = 1;
         }
-        if ( planet.hasCondition(Conditions.FARMLAND_ADEQUATE)){
+        if (planet.hasCondition(Conditions.FARMLAND_ADEQUATE)) {
             food = 2;
         }
-        if ( planet.hasCondition(Conditions.FARMLAND_RICH)){
+        if (planet.hasCondition(Conditions.FARMLAND_RICH)) {
             food = 3;
         }
-        if ( planet.hasCondition(Conditions.FARMLAND_BOUNTIFUL)){
+        if (planet.hasCondition(Conditions.FARMLAND_BOUNTIFUL)) {
             food = 4;
         }
 
 
-        if (planet.hasCondition(Conditions.VERY_COLD))
-        {
+        if (planet.hasCondition(Conditions.RUINS_SCATTERED)){
+            ruins = 1;
+        }
+        if (planet.hasCondition(Conditions.RUINS_WIDESPREAD)){
+            ruins = 2;
+        }
+        if (planet.hasCondition(Conditions.RUINS_EXTENSIVE)){
+            ruins = 3;
+        }
+        if (planet.hasCondition(Conditions.RUINS_VAST)){
+            ruins = 4;
+        }
+
+        if (planet.hasCondition(Conditions.VERY_COLD)) {
             heat = -2;
         }
-        if (planet.hasCondition(Conditions.COLD))
-        {
+        if (planet.hasCondition(Conditions.COLD)) {
             heat = -1;
         }
-        if (planet.hasCondition(Conditions.HOT))
-        {
+        if (planet.hasCondition(Conditions.HOT)) {
             heat = 1;
         }
-        if (planet.hasCondition(Conditions.VERY_HOT))
-        {
+        if (planet.hasCondition(Conditions.VERY_HOT)) {
             heat = 2;
         }
 
-        if ( planet.hasCondition(Conditions.ORGANICS_TRACE)){
+        if (planet.hasCondition(Conditions.ORGANICS_TRACE)) {
             organics = 1;
         }
-        if ( planet.hasCondition(Conditions.ORGANICS_COMMON)){
+        if (planet.hasCondition(Conditions.ORGANICS_COMMON)) {
             organics = 2;
         }
-        if ( planet.hasCondition(Conditions.ORGANICS_ABUNDANT)){
+        if (planet.hasCondition(Conditions.ORGANICS_ABUNDANT)) {
             organics = 3;
         }
-        if ( planet.hasCondition(Conditions.ORGANICS_PLENTIFUL)){
+        if (planet.hasCondition(Conditions.ORGANICS_PLENTIFUL)) {
             organics = 4;
         }
 
 
-        if ( planet.hasCondition(Conditions.VOLATILES_TRACE)){
+        if (planet.hasCondition(Conditions.VOLATILES_TRACE)) {
             volatiles = 1;
         }
-        if ( planet.hasCondition(Conditions.VOLATILES_DIFFUSE)){
+        if (planet.hasCondition(Conditions.VOLATILES_DIFFUSE)) {
             volatiles = 2;
         }
-        if ( planet.hasCondition(Conditions.VOLATILES_ABUNDANT)){
+        if (planet.hasCondition(Conditions.VOLATILES_ABUNDANT)) {
             volatiles = 3;
         }
-        if ( planet.hasCondition(Conditions.VOLATILES_PLENTIFUL)){
+        if (planet.hasCondition(Conditions.VOLATILES_PLENTIFUL)) {
             volatiles = 4;
         }
 
-        if ( planet.hasCondition(Conditions.ORE_SPARSE)){
+        if (planet.hasCondition(Conditions.ORE_SPARSE)) {
             ore = 1;
         }
-        if ( planet.hasCondition(Conditions.ORE_MODERATE)){
+        if (planet.hasCondition(Conditions.ORE_MODERATE)) {
             ore = 2;
         }
-        if ( planet.hasCondition(Conditions.ORE_ABUNDANT)){
+        if (planet.hasCondition(Conditions.ORE_ABUNDANT)) {
             ore = 3;
         }
-        if ( planet.hasCondition(Conditions.ORE_RICH)){
+        if (planet.hasCondition(Conditions.ORE_RICH)) {
             ore = 4;
         }
-        if ( planet.hasCondition(Conditions.ORE_ULTRARICH)){
+        if (planet.hasCondition(Conditions.ORE_ULTRARICH)) {
             ore = 5;
         }
 
 
-        if ( planet.hasCondition(Conditions.RARE_ORE_SPARSE)){
+        if (planet.hasCondition(Conditions.RARE_ORE_SPARSE)) {
             rare_ore = 1;
         }
-        if ( planet.hasCondition(Conditions.RARE_ORE_MODERATE)){
+        if (planet.hasCondition(Conditions.RARE_ORE_MODERATE)) {
             rare_ore = 2;
         }
-        if ( planet.hasCondition(Conditions.RARE_ORE_ABUNDANT)){
+        if (planet.hasCondition(Conditions.RARE_ORE_ABUNDANT)) {
             rare_ore = 3;
         }
-        if ( planet.hasCondition(Conditions.RARE_ORE_RICH)){
+        if (planet.hasCondition(Conditions.RARE_ORE_RICH)) {
             rare_ore = 4;
         }
-        if ( planet.hasCondition(Conditions.RARE_ORE_ULTRARICH)){
+        if (planet.hasCondition(Conditions.RARE_ORE_ULTRARICH)) {
             rare_ore = 5;
         }
     }
 
 }
+
+class PlanetReport {
+    public PlanetInfo info;
+    public ProductionPotential production;
+
+    public PlanetReport(PlanetInfo info, ProductionPotential production) {
+        this.info = info;
+        this.production = production;
+    }
+
+    @Override
+    public String toString() {
+        return "PlanetReport{" +
+                "info=" + info +
+                ", production=" + production +
+                '}';
+    }
+}
+
+class SystemReport {
+    public SystemReport(ProductionPotential production_potential, boolean has_gate, boolean has_comm) {
+        this.production_potential = production_potential;
+        this.has_gate = has_gate;
+        this.has_comm = has_comm;
+    }
+
+    public String name;
+    public ProductionPotential production_potential;
+    public  boolean has_gate;
+    public  boolean has_comm;
+    public ArrayList<PlanetReport> planets;
+
+    @Override
+    public String toString() {
+        return "SystemReport{" +
+                "name='" + name + '\'' +
+                ", production_potential=" + production_potential +
+                ", has_gate=" + has_gate +
+                ", has_comm=" + has_comm +
+                ", planets=" + planets +
+                '}';
+    }
+}
 public class Command implements BaseCommand {
     @Override
     public CommandResult runCommand(@NotNull String s, @NotNull BaseCommand.CommandContext commandContext) {
+        boolean use_ai = false;
         Console.showMessage("uwu dats " + s);
-        SectorAPI sector =Global.getSector();
+        boolean nuke = s.contains("nuke");
+        if (nuke){
+            Console.showMessage("oh noes time for war crime");
+        }
+
+        SectorAPI sector = Global.getSector();
         HashMap<String, Integer> allConditions = new HashMap<String, Integer>();
 
+        ProductionPotential maxNeeded = ProductionPotential.demand(null, use_ai);
+
+        Console.showIndentedMessage("max needed", maxNeeded, 4);
+        ArrayList<PlanetReport> planetReports = new ArrayList<>();
+        float best = Float.NEGATIVE_INFINITY;
+        best = 0;
+
         for (StarSystemAPI starSystem :
-             sector.getStarSystems()) {
+                sector.getStarSystems()) {
 
             // only systems with gates
             // if(starSystem.getEntitiesWithTag(Tags.GATE).isEmpty()) continue;
@@ -516,46 +658,48 @@ public class Command implements BaseCommand {
             }
             */
 
-            Boolean system_has_habitable = false;
-            Boolean system_has_ores = false;
-            Boolean system_has_organics = false;
-            Boolean system_has_gas_giant_volatiles_plentiful = false;
-            Boolean system_has_gate = false;
-            Boolean system_has_comm_relay = false;
-            Boolean system_has_farmland_bountiful = false;
-            Boolean system_has_very_hot = false;
+            ProductionPotential systemPotential = new ProductionPotential();
 
-            system_has_gate = ! starSystem.getEntitiesWithTag(Tags.GATE).isEmpty();
-
-            system_has_comm_relay = ! starSystem.getEntitiesWithTag(Tags.COMM_RELAY).isEmpty();
+            float score = 0;
 
             // Console.showMessage(starSystem.getName() + " has " + planets.size() + " planets");
-            for (PlanetAPI planet: planets
-                 ) {
+            for (PlanetAPI planet : planets
+            ) {
+                if(planet.isStar() || planet.isNormalStar()) continue;
 
-                if (planet.hasTag(Tags.GAS_GIANT) && planet.hasCondition(Conditions.VOLATILES_PLENTIFUL)){
-                    system_has_gas_giant_volatiles_plentiful = true;
+                MarketAPI market =  planet.getMarket();
+
+                FactionAPI faction =  planet.getFaction();
+                if (faction != null && ! (faction.isNeutralFaction() || faction.isPlayerFaction())){
+
+                    if (nuke) {
+                        if (market != null) {
+                            try {
+                                //Console.showMessage("die "+ market.getName());
+                                DecivTracker.decivilize(market, true);
+                                // MarketCMD.addBombardVisual(market.getPrimaryEntity());
+                                sector.getCampaignUI().getCurrentInteractionDialog().dismiss();
+                            } catch (Exception e) {
+
+                            }
+                        }
+                    }
+                    else{
+                        score -= 1e6;
+                    }
+
+                    // sharing is not caring
+
+                    continue;
                 }
 
-                if(planet.hasCondition(Conditions.VERY_HOT)){
-                    system_has_very_hot = true;
-                }
+                PlanetInfo info = new PlanetInfo(planet);
 
-                if(planet.hasCondition(Conditions.FARMLAND_BOUNTIFUL)){
-                    system_has_farmland_bountiful = true;
-                }
+                ProductionPotential potential = new ProductionPotential(info);
+                systemPotential.max(potential);
 
-                if(planet.hasCondition(Conditions.ORGANICS_PLENTIFUL)){
-                    system_has_organics = true;
-                }
-
-                if(planet.hasCondition(Conditions.HABITABLE)){
-                    system_has_habitable = true;
-                }
-
-                if(planet.hasCondition(Conditions.ORE_ULTRARICH) && planet.hasCondition(Conditions.RARE_ORE_ULTRARICH) && !planet.hasCondition(Conditions.HABITABLE)){
-                    system_has_ores = true;
-                }
+                PlanetReport report = new PlanetReport(info, potential);
+                planetReports.add(report);
 
                 /*
                 MarketAPI market =  planet.getMarket();
@@ -588,27 +732,51 @@ public class Command implements BaseCommand {
 
 */
             }
-            int system_score = (system_has_habitable? 1 : 0 ) +
-                    (system_has_ores? 3 : 0 ) +
-                    (system_has_organics? 1 : 0 ) +
-                    (system_has_gas_giant_volatiles_plentiful? 10 : 0 ) +
-                    (system_has_gate? 5 : 0 ) +
-                    (system_has_comm_relay? 1 : 0 ) +
-                    (system_has_farmland_bountiful? 1 : 0 ) +
-                    (system_has_very_hot? 1 : 0 );
+            boolean system_has_gate = !starSystem.getEntitiesWithTag(Tags.GATE).isEmpty();
+            boolean system_has_comm_relay = !starSystem.getEntitiesWithTag(Tags.COMM_RELAY).isEmpty();
 
-            if (system_score > 15 ) {
-                Console.showMessage(starSystem.getName());
-                Console.showMessage("score=" + system_score);
-                Console.showMessage("system_has_habitable=" + system_has_habitable);
-                Console.showMessage("system_has_ores=" + system_has_ores);
-                Console.showMessage("system_has_organics=" + system_has_organics);
-                Console.showMessage("system_has_gas_giant_volatiles_plentiful=" + system_has_gas_giant_volatiles_plentiful);
-                Console.showMessage("system_has_gate=" + system_has_gate);
-                Console.showMessage("system_has_comm_relay=" + system_has_comm_relay);
-                Console.showMessage("system_has_farmland_bountiful=" + system_has_farmland_bountiful);
-                Console.showMessage("system_has_very_hot=" + system_has_very_hot);
+            SystemReport report = new SystemReport(systemPotential, system_has_gate, system_has_comm_relay);
+            report.planets = planetReports;
+            report.name = systemName;
+
+            boolean good_enough = systemPotential.at_least(maxNeeded);
+
+
+            try {
+                //(ProductionPotential)maxNeeded.clone();
+                ProductionPotential shortages = (ProductionPotential)maxNeeded.clone();
+                shortages.subtract(systemPotential);
+                shortages.clip();
+                score -= 16 * shortages.total();
+
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
             }
+
+
+
+
+            for (PlanetReport planetReport: planetReports
+                 ) {
+                // add points for planets
+                score +=  Math.pow(2,planetReport.info.ruins)*(1 + planetReport.info.accessibility)/planetReport.info.hazard;
+            }
+            score += systemPotential.total();
+
+            if(system_has_comm_relay)
+                score += 100;
+
+            if(system_has_gate)
+                score *= 2;
+
+            score /= starSystem.getLocation().lengthSquared();
+
+            if(best < score) {
+                best = score;
+                Console.showMessage(systemName +"\t"+good_enough+ "\tscore: "+ score);
+                //Console.showIndentedMessage(systemName + "\tscore: "+ score, report, 4);
+            }
+
         }
         /*
         Console.showMessage("all conditions: ");

@@ -132,7 +132,7 @@ tasks {
                         "version": { "major":"${version._1}", "minor": "${version._2}", "patch": "${version._3}" },
                         "description": "${modDescription}",
                         "gameVersion": "${gameVersion}",
-                        "jars":[${jars.joinToString() { "\"$it\"" }}],
+                        "jars":[${jars.joinToString { "\"$it\"" }}],
                         "modPlugin":"${modPlugin}",
                         "dependencies": [
                             {
@@ -191,7 +191,7 @@ tasks {
     // If enabled, will copy your mod to the /mods directory when run (and whenever gradle syncs).
     // Disabled by default, as it is not needed if your mod directory is symlinked into your /mods folder.
     register<Copy>("install-mod") {
-        val enabled = false;
+        val enabled = false
 
         if (!enabled) return@register
 
