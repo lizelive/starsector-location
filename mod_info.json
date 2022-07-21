@@ -6,7 +6,7 @@
     "version": "0.0.1",
     "description": "Enables the player to search for systems with a certain number of planets and conditions.",
     "gameVersion": "0.95.1a-RC6",
-    "jars":["jars/starbase-location.jar"],
+    "jars":["jars/starsector-location.jar"],
     "dependencies":  [
         {"id": "lw_console", "name": "Console Commands"},
         {
