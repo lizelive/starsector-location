@@ -619,11 +619,29 @@ public class Command implements BaseCommand {
         boolean use_ai = false;
         Console.showMessage("uwu dats " + s);
         boolean nuke = s.contains("nuke");
+        SectorAPI sector = Global.getSector();
+
+
         if (nuke){
             Console.showMessage("oh noes time for war crime");
+
+            for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()){
+
+
+                FactionAPI faction =  market.getFaction();
+                if (faction != null && ! (faction.isNeutralFaction() || faction.isPlayerFaction())) {
+                    try {
+                        //Console.showMessage("die "+ market.getName());
+                        DecivTracker.decivilize(market, true);
+                        // MarketCMD.addBombardVisual(market.getPrimaryEntity());
+                        sector.getCampaignUI().getCurrentInteractionDialog().dismiss();
+                    } catch (Exception e) {
+
+                    }
+                }
+            }
         }
 
-        SectorAPI sector = Global.getSector();
         HashMap<String, Integer> allConditions = new HashMap<String, Integer>();
 
         ProductionPotential maxNeeded = ProductionPotential.demand(null, use_ai);
@@ -673,16 +691,6 @@ public class Command implements BaseCommand {
                 if (faction != null && ! (faction.isNeutralFaction() || faction.isPlayerFaction())){
 
                     if (nuke) {
-                        if (market != null) {
-                            try {
-                                //Console.showMessage("die "+ market.getName());
-                                DecivTracker.decivilize(market, true);
-                                // MarketCMD.addBombardVisual(market.getPrimaryEntity());
-                                sector.getCampaignUI().getCurrentInteractionDialog().dismiss();
-                            } catch (Exception e) {
-
-                            }
-                        }
                     }
                     else{
                         score -= 1e6;
